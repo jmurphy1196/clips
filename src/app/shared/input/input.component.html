@@ -1,0 +1,41 @@
+<input
+  [mask]="format"
+  [formControl]="control"
+  type="{{ type }}"
+  class="block w-full py-1.5 px-3 text-gray-200 border border-gray-400 transition duration-500 focus:outline-none rounded bg-transparent focus:border-indigo-400"
+  placeholder="{{ placeHolder }}"
+  [dropSpecialCharacters]="false"
+/>
+<ng-container *ngIf="control.touched && control.dirty">
+  <p *ngIf="control.errors?.['pattern']" class="{{ errorTextClass }}">
+    Passwords must be at least 8 characters long, have 1 letter, 1 letter, and
+    one special character
+  </p>
+  <p *ngIf="control.errors?.['required']" class="{{ errorTextClass }}">
+    {{ fieldName }} is required
+  </p>
+  <div
+    *ngIf="control.errors?.['minlength']"
+    class="{{ errorTextClass }} flex justify-between"
+  >
+    <p>
+      {{ fieldName }} must be at least
+      {{control.errors?.['minlength'].requiredLength}}
+      characters long
+    </p>
+    <p>
+      ({{ control.value.length }}/{{control.errors?.['minlength'].requiredLength
+
+      }})
+    </p>
+  </div>
+  <p class="{{ errorTextClass }}" *ngIf="control.errors?.['email']">
+    You must enter a valid email
+  </p>
+  <p *ngIf="control.errors?.['min']" class="{{ errorTextClass }}">
+    Must be 18 or older
+  </p>
+  <p *ngIf="control.errors?.['max']" class="{{ errorTextClass }}">
+    Value too high
+  </p>
+</ng-container>

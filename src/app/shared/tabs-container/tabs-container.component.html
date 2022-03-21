@@ -1,0 +1,13 @@
+<ul class="flex flex-wrap mb-4">
+  <li class="flex-auto text-center" *ngFor="let tab of tabs">
+    <a
+      [ngClass]="setTabClasses(tab)"
+      (click)="selectTab(tab)"
+      class="block rounded py-3 px-4 transition hover:text-white text-white bg-indigo-400"
+      href="#"
+      >{{ tab.tabTitle }}</a
+    >
+  </li>
+</ul>
+
+<ng-content> </ng-content>
