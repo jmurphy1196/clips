@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { ModalService } from '../services/modal.service';
+import { AuthService } from '../services/auth.service';
+import { ModalIds, ModalService } from '../services/modal.service';
 
 @Component({
   selector: 'app-nav',
@@ -7,11 +8,13 @@ import { ModalService } from '../services/modal.service';
   styleUrls: ['./nav.component.scss'],
 })
 export class NavComponent implements OnInit {
-  constructor(public modal: ModalService) {}
+  activeLinkClass = 'text-indigo-400';
+  routerLinkOptions = { exact: true };
+  constructor(public modal: ModalService, public authService: AuthService) {}
 
   ngOnInit(): void {}
   openModal($event: Event) {
     $event.preventDefault();
-    this.modal.toggleModal('auth');
+    this.modal.toggleModal(ModalIds.authModal);
   }
 }

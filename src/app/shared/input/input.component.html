@@ -29,6 +29,21 @@
       }})
     </p>
   </div>
+  <div
+    *ngIf="control.errors?.['maxlength']"
+    class="{{ errorTextClass }} flex justify-between"
+  >
+    <p>
+      {{ fieldName }} cannot be longer than 
+      {{control.errors?.['maxlength'].requiredLength}}
+      characters long
+    </p>
+    <p>
+      ({{ control.value.length }}/{{control.errors?.['maxlength'].requiredLength
+
+      }})
+    </p>
+  </div>
   <p class="{{ errorTextClass }}" *ngIf="control.errors?.['email']">
     You must enter a valid email
   </p>
@@ -37,5 +52,11 @@
   </p>
   <p *ngIf="control.errors?.['max']" class="{{ errorTextClass }}">
     Value too high
+  </p>
+  <p *ngIf="control.errors?.['doesNotMatch']" class="{{ errorTextClass }}">
+    password does not match
+  </p>
+  <p *ngIf="control.errors?.['emailTaken']" class="{{ errorTextClass }}">
+    Email is already in use
   </p>
 </ng-container>

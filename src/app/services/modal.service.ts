@@ -5,6 +5,11 @@ interface IModal {
   visible: boolean;
 }
 
+export enum ModalIds {
+  authModal = 'auth',
+  editClipModal = 'edit-clip',
+}
+
 @Injectable({
   providedIn: 'root',
 })
