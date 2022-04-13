@@ -14,7 +14,7 @@ import {
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import firebase from 'firebase/compat/app';
 import { v4 as uuid } from 'uuid';
-import { last, switchMap } from 'rxjs';
+import { last, switchMap, combineLatest, forkJoin } from 'rxjs';
 import { ClipService } from 'src/app/services/clip.service';
 import { Router } from '@angular/router';
 import { FfmpegService } from 'src/app/services/ffmpeg.service';
@@ -28,7 +28,11 @@ export class UploadComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('fileInputElement') fileInputElement:
     | ElementRef<HTMLInputElement>
     | undefined;
+  screenshotTask?: AngularFireUploadTask;
+  selectedScreenshot = '';
+  screenshots: string[] = [];
   percentage = 0;
+  processingScreenshots: null | boolean = null;
   showPercentage = true;
   alertMessage = '';
   alertColor = '';
@@ -79,6 +83,7 @@ export class UploadComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async storeFile($event: Event) {
+    if (this.processingScreenshots) return;
     this.isDragover = false;
     this.file = ($event as DragEvent).dataTransfer
       ? ($event as DragEvent).dataTransfer?.files.item(0) ?? null
@@ -87,7 +92,10 @@ export class UploadComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.file || this.file.type !== 'video/mp4') {
       return;
     }
-    await this.ffmpegService.getScreenshots(this.file);
+    this.processingScreenshots = true;
+    this.screenshots = await this.ffmpegService.getScreenshots(this.file);
+    this.selectedScreenshot = this.screenshots[0];
+    this.processingScreenshots = false;
     this.nextStep = true;
     this.title.setValue(this.file.name.replace(/\.[^/.]+$/, ''));
     console.log(this.file);
@@ -96,6 +104,11 @@ export class UploadComponent implements OnInit, AfterViewInit, OnDestroy {
     const clipFileName = uuid();
     const clipPath = `clips/${clipFileName}.mp4`;
 
+    const screenshotBlob = await this.ffmpegService.blobFromURL(
+      this.selectedScreenshot
+    );
+    const screenshotPath = `screenshots/${clipFileName}.png`;
+
     try {
       this.uploadForm.disable();
       this.setAlertMessage('Upload in progress...', 'blue');
@@ -103,9 +116,19 @@ export class UploadComponent implements OnInit, AfterViewInit, OnDestroy {
       this.inSubmission = true;
       this.task = this.fireStorage.upload(clipPath, this.file);
       const clipRef = this.fireStorage.ref(clipPath);
-      this.task.percentageChanges().subscribe({
-        next: (progress) => {
-          this.percentage = (progress as number) / 100;
+      this.screenshotTask = this.fireStorage.upload(
+        screenshotPath,
+        screenshotBlob
+      );
+      const screenshotRef = this.fireStorage.ref(screenshotPath);
+      combineLatest([
+        this.task.percentageChanges(),
+        this.screenshotTask?.percentageChanges(),
+      ]).subscribe({
+        next: ([vidProg, screenshotProg]) => {
+          if (!vidProg || !screenshotProg) return;
+          const total = vidProg + screenshotProg;
+          this.percentage = (total as number) / 200;
         },
         complete: () => {
           this.setAlertMessage('Upload complete :D', 'green');
@@ -121,21 +144,26 @@ export class UploadComponent implements OnInit, AfterViewInit, OnDestroy {
           this.uploadForm.enable();
         },
       });
-      this.task
-        .snapshotChanges()
+      forkJoin([
+        this.task.snapshotChanges(),
+        this.screenshotTask.snapshotChanges(),
+      ])
         .pipe(
-          last(),
-          switchMap(() => clipRef.getDownloadURL())
+          switchMap(() =>
+            forkJoin([clipRef.getDownloadURL(), screenshotRef.getDownloadURL()])
+          )
         )
         .subscribe({
-          next: async (url) => {
+          next: async ([clipURL, screenshotURL]) => {
             const clip = {
               uid: this.user?.uid as string,
               displayName: this.user?.displayName as string,
               title: this.title.value,
               fileName: `${clipFileName}.mp4`,
-              url,
+              url: clipURL,
+              screenshotURL,
               timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+              screenshotFilename: `${clipFileName}.png`,
             };
             const clipDocRef = await this.clipService.createClip(clip);
             setTimeout(() => {
@@ -151,5 +179,6 @@ export class UploadComponent implements OnInit, AfterViewInit, OnDestroy {
       this.showPercentage = false;
       this.uploadForm.enable();
     }
+    this.processingScreenshots = null;
   }
 }
